@@ -20,8 +20,9 @@ public class SyntaxHighlighter {
   private static final Set<String> keywords = ImmutableSet.of("abstract", "assert", "boolean", "break", "byte", "case",
       "catch", "char", "class", "const", "continue", "default", "do", "double", "else", "enum", "extends", "final",
       "finally", "float", "for", "goto", "if", "implements", "import", "instanceof", "int", "interface", "long",
-      "native", "new", "null", "package", "private", "protected", "public", "return", "short", "static", "strictfp",
-      "super", "switch", "synchronized", "this", "throw", "throws", "transient", "try", "void", "volatile", "while");
+      "native", "new", "package", "private", "protected", "public", "return", "short", "static", "strictfp",
+      "super", "switch", "synchronized", "this", "throw", "throws", "transient", "try", "void", "volatile", "while",
+      "null", "true", "false");
 
   private static final SimpleAttributeSet keywordStyle = new SimpleAttributeSet();
   private static final SimpleAttributeSet classStyle = new SimpleAttributeSet();

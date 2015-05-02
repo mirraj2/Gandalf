@@ -45,7 +45,7 @@ public class QuickCompiler {
     for (GFile file : project.files) {
       File diskFile = new File(SOURCE_DIR, file.name);
       sb.append(" ").append(diskFile.getPath());
-      IO.from(file.content).to(diskFile);
+      IO.from(file.getContent()).to(diskFile);
     }
 
     StringWriter output = new StringWriter();

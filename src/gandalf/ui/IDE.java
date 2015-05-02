@@ -1,25 +1,31 @@
 package gandalf.ui;
 
-import gandalf.code.CodeRunner;
+import gandalf.Gandalf;
 import gandalf.code.QuickCompiler;
 import gandalf.model.Project;
 import gandalf.ui.editor.CodeEditor;
+import jasonlib.IO;
+import jasonlib.swing.component.GLabel;
 import jasonlib.swing.component.GPanel;
 import jasonlib.swing.component.GScrollPane;
+import jasonlib.swing.component.GSeparator;
 import jasonlib.swing.component.GSplitPane;
 import jasonlib.swing.component.GTextArea;
 import jasonlib.swing.component.GTextField;
 import java.awt.Color;
+import java.awt.Cursor;
 import java.awt.Font;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
+import java.awt.image.BufferedImage;
 import javax.swing.JComponent;
-import javax.swing.JSeparator;
 import net.miginfocom.swing.MigLayout;
 
 public class IDE extends GPanel {
+
+  public static GTextArea console = new GTextArea();
 
   private Project project;
 
@@ -27,22 +33,18 @@ public class IDE extends GPanel {
   private GTextField projectLabel = new GTextField().color(Color.white).font("Georgia", 26).bold();
   private FileList fileList;
   private CodeEditor editor = new CodeEditor();
-  private QuickCompiler compiler;
-  private GTextArea console = new GTextArea();
 
   public IDE(Project project) {
     super(new MigLayout("insets 0, gap 0"));
 
     this.project = project;
     this.fileList = new FileList(project.files);
-    this.compiler = new QuickCompiler(editor, project);
+    new QuickCompiler(editor, project);
 
     setBackground(new Color(40, 40, 40));
     console.setBackground(getBackground());
     console.setForeground(Color.white);
     console.setFont(new Font("Courier", Font.PLAIN, 14));
-
-    CodeRunner.console = console;
 
     projectLabel.setText(project.name);
     projectLabel.setBackground(new Color(0, 0, 0, 0));
@@ -60,9 +62,14 @@ public class IDE extends GPanel {
 
   private JComponent createLeftSide() {
     GPanel ret = new GPanel(new MigLayout("insets 10, gap 0"));
-    JSeparator s = new JSeparator();
-    s.setBackground(new Color(0, 0, 0, 0));
+    GSeparator s = new GSeparator();
+    
+    BufferedImage gandalfIcon = IO.from(getClass(), "gandalf-small.png").toImage();
+    GLabel backButton = new GLabel(gandalfIcon).click(this::goHome);
 
+    backButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+
+    ret.add(backButton, "split");
     ret.add(projectLabel, "width 100%, wrap 0");
     ret.add(s, "width 100%, height pref!, wrap 0");
     ret.add(fileList, "width 100%, height 100%");
@@ -70,12 +77,20 @@ public class IDE extends GPanel {
   }
 
   private JComponent createRightSide() {
-//    GPanel ret = new GPanel(new MigLayout("insets 5 0 0 0, gap 0"));
-    
     GScrollPane editorScroll = new GScrollPane(editor);
     GScrollPane consoleScroll = new GScrollPane(console);
     
     return topBottomSplit = GSplitPane.topBottom(editorScroll, consoleScroll);
+  }
+
+  private void goHome() {
+    project.name = projectLabel.getText();
+    project.save();
+    Gandalf.goHome();
+  }
+
+  public void shutdown() {
+    project.save();
   }
 
   private void listen() {

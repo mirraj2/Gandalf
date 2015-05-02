@@ -1,28 +1,32 @@
 package gandalf.code;
 
 import gandalf.model.GFile;
+import gandalf.ui.IDE;
 import jasonlib.Log;
 import jasonlib.swing.component.GTextArea;
 import jasonlib.util.Utils;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import javax.swing.text.Document;
 import com.google.common.base.Throwables;
+import com.google.common.collect.Lists;
 
 public class CodeRunner {
 
   private static final Executor executor = Executors.newCachedThreadPool();
 
   private static final int MAX_BUFFER_SIZE = 99999;
-  public static GTextArea console;
+
+  private static List<Process> runningProcesses = Lists.newCopyOnWriteArrayList();
 
   private Process process;
 
   public CodeRunner run(GFile file, Runnable callback) {
-    console.setText("");
+    IDE.console.setText("");
 
     Log.debug("Running " + file);
 
@@ -45,8 +49,11 @@ public class CodeRunner {
   }
 
   private void handle(ProcessBuilder pb, Runnable callback) {
+    GTextArea console = IDE.console;
+
     try {
       process = pb.start();
+      runningProcesses.add(process);
 
       Reader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
       char[] buffer = new char[1024];
@@ -82,9 +89,24 @@ public class CodeRunner {
           last = System.currentTimeMillis();
         }
       }
+      runningProcesses.remove(process);
       callback.run();
     } catch (Exception e) {
       throw Throwables.propagate(e);
+    }
+  }
+
+  public static void shutdown() {
+    if (runningProcesses.isEmpty()) {
+      return;
+    }
+    Log.info("Exiting " + runningProcesses.size() + " running processes.");
+    for (Process p : runningProcesses) {
+      try {
+        p.destroyForcibly();
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
     }
   }
 
