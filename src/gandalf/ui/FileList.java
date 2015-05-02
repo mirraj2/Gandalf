@@ -1,57 +1,109 @@
 package gandalf.ui;
 
+import static com.google.common.collect.Iterables.getFirst;
+import gandalf.code.CodeRunner;
 import gandalf.model.GFile;
-import jasonlib.swing.component.GList;
+import jasonlib.swing.component.GLabel;
 import jasonlib.swing.component.GPanel;
 import java.awt.Color;
-import java.awt.Component;
-import java.awt.Font;
-import java.awt.GridLayout;
+import java.awt.Graphics;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.List;
-import javax.swing.BorderFactory;
-import javax.swing.DefaultListCellRenderer;
-import javax.swing.JComponent;
-import javax.swing.JList;
-import javax.swing.border.Border;
+import net.miginfocom.swing.MigLayout;
+import com.google.common.collect.Lists;
 
 public class FileList extends GPanel {
 
-  public final GList<GFile> list;
+  private GFile selected;
+  private List<Runnable> callbacks = Lists.newArrayList();
 
   public FileList(List<GFile> files) {
-    setLayout(new GridLayout(1, 1));
+    super(new MigLayout("insets 0, gap 0"));
 
-    list = new GList<>(files);
-    list.setCellRenderer(new MyCellRenderer());
-    list.setOpaque(false);
-    list.setBackground(new Color(0, 0, 0, 0));
-    list.setForeground(Color.white);
-    list.setFont(new Font("Georgia", Font.PLAIN, 20));
-    list.setSelectedIndex(0);
+    for (GFile file : files) {
+      add(new FileDiv(file), "width 100%, wrap");
+    }
 
-    add(list, "width 100%, height 100%");
+    selected = getFirst(files, null);
+  }
+
+  public void change(Runnable callback) {
+    callbacks.add(callback);
   }
 
   public GFile getFile() {
-    return list.getSelectedValue();
+    return selected;
   }
 
-  private static class MyCellRenderer extends DefaultListCellRenderer {
-    final Border border2 = BorderFactory.createEmptyBorder(1, 1, 1, 1);
+  private class FileDiv extends GPanel {
+    public final GFile file;
+    public final GLabel label;
+    private CustomButton runButton;
+    private CodeRunner runner;
+
+    public FileDiv(GFile file) {
+      super(new MigLayout("insets 5 5 5 5, gap 0"));
+
+      this.file = file;
+      label = new GLabel(file.name).font("Georgia", 20).color(Color.white);
+      runButton = new CustomButton().fontSize(12).size(60, 20);
+
+      syncRunButton();
+
+      add(label, "width 100%");
+      add(runButton, "aligny center");
+
+      listen();
+    }
+
+    private void syncRunButton() {
+      if (runner == null) {
+        runButton.setText("Run");
+        runButton.hoverColor = new Color(180, 255, 100);
+      } else {
+        runButton.setText("Stop");
+        runButton.hoverColor = new Color(255, 100, 100);
+      }
+      runButton.repaint();
+    }
 
     @Override
-    public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected,
-        boolean cellHasFocus) {
-      Component c = super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-      if (c instanceof JComponent) {
-        ((JComponent) c).setBorder(border2);
+    protected void paintComponent(Graphics g) {
+      if (file == selected) {
+        g.setColor(new Color(50, 100, 150));
+        g.fillRect(0, 0, getWidth(), getHeight());
       }
-      if (isSelected) {
-        c.setBackground(new Color(40, 80, 200, 150));
-      } else {
-        c.setBackground(new Color(0, 0, 0, 0));
-      }
-      return c;
+    }
+
+    private void listen() {
+      runButton.click(() -> {
+        if (runner == null) {
+          runner = new CodeRunner().run(file, () -> {
+            runner = null;
+            syncRunButton();
+          });
+        } else{
+          runner.stop();
+          runner = null;
+        }
+        syncRunButton();
+      });
+
+      addMouseListener(new MouseAdapter() {
+        @Override
+        public void mousePressed(MouseEvent e) {
+          if (selected == file) {
+            return;
+          }
+          selected = file;
+          for (Runnable callback : callbacks) {
+            callback.run();
+          }
+
+          FileList.this.repaint();
+        }
+      });
     }
   }
 

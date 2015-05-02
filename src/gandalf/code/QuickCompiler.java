@@ -1,4 +1,4 @@
-package gandalf.compile;
+package gandalf.code;
 
 import static jasonlib.util.Utils.sleep;
 import gandalf.model.GFile;
@@ -18,6 +18,11 @@ import com.google.common.collect.Multimaps;
 
 public class QuickCompiler {
 
+  public static final File SOURCE_DIR = new File(OS.getAppFolder("gandalf"), "src");
+  static {
+    SOURCE_DIR.mkdirs();
+  }
+
   private CodeEditor editor;
   private Project project;
 
@@ -35,13 +40,10 @@ public class QuickCompiler {
   private void compile() {
     Log.info("Compiling...");
 
-    File dir = new File(OS.getAppFolder("gandalf"), "src");
-    dir.mkdirs();
-
     StringBuilder sb = new StringBuilder("-8 -classpath rt.jar");
 
     for (GFile file : project.files) {
-      File diskFile = new File(dir, file.name);
+      File diskFile = new File(SOURCE_DIR, file.name);
       sb.append(" ").append(diskFile.getPath());
       IO.from(file.content).to(diskFile);
     }

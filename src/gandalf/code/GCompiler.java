@@ -1,4 +1,4 @@
-package gandalf.compile;
+package gandalf.code;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;

@@ -1,4 +1,4 @@
-package gandalf.compile;
+package gandalf.code;
 
 import org.eclipse.jdt.core.compiler.CompilationProgress;
 
