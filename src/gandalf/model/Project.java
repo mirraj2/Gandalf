@@ -14,7 +14,7 @@ public class Project {
 
   public static final File projectsDir = new File(OS.getAppFolder("gandalf"), "projects");
   private static int idCounter = 0;
-  {
+  static {
     projectsDir.mkdirs();
 
     for (File file : projectsDir.listFiles()) {
@@ -31,6 +31,7 @@ public class Project {
 
   public Project() {
     this(idCounter++, DEFAULT_NAME);
+    Log.debug("new project: " + id);
 
     files.add(new GFile("Main.java", IO.from(getClass(), "main").toString()));
   }
@@ -61,9 +62,18 @@ public class Project {
       dir.mkdirs();
     }
 
+    Json filesJson = Json.object();
+    for (GFile file : files) {
+      filesJson.with(file.name, Json.object()
+          .with("instructions", file.instructions)
+          .with("hidden", file.hidden)
+          );
+    }
+
     Json json = Json.object()
         .with("id", id)
-        .with("name", name);
+        .with("name", name)
+        .with("files", filesJson);
     IO.from(json).to(new File(dir, "project.json"));
 
     for (GFile file : files) {
@@ -90,10 +100,14 @@ public class Project {
 
     Project ret = new Project(json.getInt("id"), json.get("name"));
 
-    for (File file : dir.listFiles()) {
-      if (!file.getName().equals("project.json")) {
-        ret.files.add(new GFile(file.getName(), IO.from(file).toString()));
-      }
+    Json filesJson = json.getJson("files");
+    for (String file : filesJson) {
+      String content = IO.from(new File(dir, file)).toString();
+      GFile gfile = new GFile(file, content);
+      Json fileJson = filesJson.getJson(file);
+      gfile.instructions = fileJson.get("instructions");
+      gfile.hidden = fileJson.getBoolean("hidden");
+      ret.files.add(gfile);
     }
 
     return ret;

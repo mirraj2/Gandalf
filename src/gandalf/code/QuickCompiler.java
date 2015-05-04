@@ -42,6 +42,10 @@ public class QuickCompiler {
 
     StringBuilder sb = new StringBuilder("-8 -classpath rt.jar");
 
+    for (File child : SOURCE_DIR.listFiles()) {
+      child.delete();
+    }
+
     for (GFile file : project.files) {
       File diskFile = new File(SOURCE_DIR, file.name);
       sb.append(" ").append(diskFile.getPath());

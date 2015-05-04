@@ -1,6 +1,5 @@
 package gandalf.ui;
 
-import static com.google.common.collect.Iterables.getFirst;
 import gandalf.code.CodeRunner;
 import gandalf.model.GFile;
 import jasonlib.swing.component.GLabel;
@@ -8,11 +7,16 @@ import jasonlib.swing.component.GPanel;
 import jasonlib.swing.global.Components;
 import java.awt.Color;
 import java.awt.Graphics;
+import java.awt.event.ActionEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.Collections;
 import java.util.List;
+import javax.swing.AbstractAction;
 import javax.swing.Box;
+import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
+import javax.swing.JPopupMenu;
 import net.miginfocom.swing.MigLayout;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
@@ -31,28 +35,42 @@ public class FileList extends GPanel {
 
     init();
 
-    selected = getFirst(files, null);
+    selected = getFirstVisibleFile();
     newClassButton.click(this::addClass);
   }
 
   private void init() {
     for (GFile file : files) {
-      add(new FileDiv(file), "width 100%, wrap");
+      if (!file.hidden) {
+        add(new FileDiv(file), "width 100%, wrap");
+      }
     }
 
     add(Box.createVerticalGlue(), "height 100%, wrap");
-    add(newClassButton, "width 100%!");
+    add(newClassButton, "growx");
+  }
 
+  private void remakeUI() {
+    removeAll();
+    init();
+    Components.refresh(this);
   }
 
   private void addClass() {
     String name = JOptionPane.showInputDialog("Enter class name:");
     if (!Strings.isNullOrEmpty(name)) {
-      files.add(new GFile(name + ".java", "\npublic class " + name + " {\n  \n}\n"));
-      removeAll();
-      init();
-      Components.refresh(this);
+      GFile newFile = new GFile(name + ".java", "\npublic class " + name + " {\n  \n}\n");
+      files.add(newFile);
+      setSelectedFile(newFile);
+      sortFiles();
     }
+  }
+
+  private void sortFiles() {
+    Collections.sort(files, (a, b) -> {
+      return a.name.compareToIgnoreCase(b.name);
+    });
+    remakeUI();
   }
 
   public void change(Runnable callback) {
@@ -61,6 +79,26 @@ public class FileList extends GPanel {
 
   public GFile getFile() {
     return selected;
+  }
+
+  private void setSelectedFile(GFile file) {
+    if (selected == file) {
+      return;
+    }
+    selected = file;
+    for (Runnable callback : callbacks) {
+      callback.run();
+    }
+    repaint();
+  }
+
+  private GFile getFirstVisibleFile() {
+    for (GFile file : files) {
+      if (!file.hidden) {
+        return file;
+      }
+    }
+    return null;
   }
 
   private class FileDiv extends GPanel {
@@ -81,7 +119,47 @@ public class FileList extends GPanel {
       add(label, "width 100%");
       add(runButton, "aligny center");
 
+      setComponentPopupMenu(createPopup());
+
       listen();
+    }
+
+    private JPopupMenu createPopup() {
+      JPopupMenu ret = new JPopupMenu();
+      JMenuItem rename = new JMenuItem(new AbstractAction("Rename") {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+          String s = JOptionPane.showInputDialog("Name:");
+          if (s != null) {
+            file.name = s + ".java";
+            sortFiles();
+          }
+        }
+      });
+      JMenuItem hide = new JMenuItem(new AbstractAction("Hide") {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+          file.hidden = true;
+          removeFromList();
+        }
+      });
+      JMenuItem delete = new JMenuItem(new AbstractAction("Delete") {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+          files.remove(file);
+          removeFromList();
+        }
+      });
+      ret.add(rename);
+      ret.add(hide);
+      ret.add(delete);
+      return ret;
+    }
+
+    private void removeFromList() {
+      FileList.this.remove(FileDiv.this);
+      setSelectedFile(getFirstVisibleFile());
+      Components.refresh(FileList.this);
     }
 
     private void syncRunButton() {
@@ -120,7 +198,7 @@ public class FileList extends GPanel {
             runner = null;
             syncRunButton();
           });
-        } else{
+        } else {
           runner.stop();
           runner = null;
         }
@@ -130,15 +208,7 @@ public class FileList extends GPanel {
       addMouseListener(new MouseAdapter() {
         @Override
         public void mousePressed(MouseEvent e) {
-          if (selected == file) {
-            return;
-          }
-          selected = file;
-          for (Runnable callback : callbacks) {
-            callback.run();
-          }
-
-          FileList.this.repaint();
+          setSelectedFile(file);
         }
       });
     }

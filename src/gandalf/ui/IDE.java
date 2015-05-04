@@ -15,12 +15,14 @@ import jasonlib.swing.component.GTextField;
 import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Font;
+import java.awt.Insets;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.awt.image.BufferedImage;
 import javax.swing.JComponent;
+import javax.swing.SwingUtilities;
 import net.miginfocom.swing.MigLayout;
 
 public class IDE extends GPanel {
@@ -29,10 +31,11 @@ public class IDE extends GPanel {
 
   private Project project;
 
-  private GSplitPane leftRightSplit, topBottomSplit;
+  private GSplitPane leftRightSplit, editorConsoleSplit, instructionsEditorSplit;
   private GTextField projectLabel = new GTextField().color(Color.white).font("Georgia", 26).bold();
   private FileList fileList;
   private CodeEditor editor = new CodeEditor();
+  private GTextArea instructions = new GTextArea();
 
   public IDE(Project project) {
     super(new MigLayout("insets 0, gap 0"));
@@ -46,6 +49,13 @@ public class IDE extends GPanel {
     console.setForeground(Color.white);
     console.setFont(new Font("Courier", Font.PLAIN, 14));
 
+    instructions.setBackground(getBackground());
+    instructions.setForeground(Color.white);
+    instructions.setFont(new Font("Georgia", Font.PLAIN, 16));
+    instructions.setEditable(true);
+    instructions.setCaretColor(Color.white);
+    instructions.setMargin(new Insets(5, 2, 5, 2));
+
     projectLabel.setText(project.name);
     projectLabel.setBackground(new Color(0, 0, 0, 0));
     projectLabel.setOpaque(false);
@@ -54,8 +64,8 @@ public class IDE extends GPanel {
 
     leftRightSplit = GSplitPane.leftRight(createLeftSide(), createRightSide());
     add(leftRightSplit, "width 100%, height 100%");
-    
-    editor.edit(fileList.getFile());
+
+    syncFile();
 
     listen();
   }
@@ -63,7 +73,7 @@ public class IDE extends GPanel {
   private JComponent createLeftSide() {
     GPanel ret = new GPanel(new MigLayout("insets 10, gap 0"));
     GSeparator s = new GSeparator();
-    
+
     BufferedImage gandalfIcon = IO.from(getClass(), "gandalf-small.png").toImage();
     GLabel backButton = new GLabel(gandalfIcon).click(this::goHome);
 
@@ -79,8 +89,12 @@ public class IDE extends GPanel {
   private JComponent createRightSide() {
     GScrollPane editorScroll = new GScrollPane(editor);
     GScrollPane consoleScroll = new GScrollPane(console);
-    
-    return topBottomSplit = GSplitPane.topBottom(editorScroll, consoleScroll);
+    GScrollPane instructionsScroll = new GScrollPane(instructions);
+
+    editorConsoleSplit = GSplitPane.topBottom(editorScroll, consoleScroll);
+    instructionsEditorSplit = GSplitPane.topBottom(instructionsScroll, editorConsoleSplit);
+
+    return instructionsEditorSplit;
   }
 
   private void goHome() {
@@ -93,16 +107,46 @@ public class IDE extends GPanel {
     project.save();
   }
 
+  private void syncFile() {
+    editor.edit(fileList.getFile());
+    instructions.setText(fileList.getFile().instructions);
+    updateDividers();
+  }
+
+  private void updateDividers() {
+    leftRightSplit.setDividerLocation(256);
+    instructionsEditorSplit.setDividerLocation(instructions.getPreferredSize().height);
+    SwingUtilities.invokeLater(() -> {
+      if (instructions.getText().isEmpty()) {
+        editorConsoleSplit.setDividerLocation(.8);
+      } else {
+        editorConsoleSplit.setDividerLocation(1.0);
+      }
+    });
+  }
+
   private void listen() {
-    fileList.change(() -> {
-      editor.edit(fileList.getFile());
+    fileList.change(this::syncFile);
+    instructions.change(() -> {
+      fileList.getFile().instructions = instructions.getText();
     });
 
     addComponentListener(new ComponentAdapter() {
+      private void adjust() {
+        updateDividers();
+      }
+
       @Override
       public void componentResized(ComponentEvent e) {
-        leftRightSplit.setDividerLocation(256);
-        topBottomSplit.setDividerLocation(getHeight() - 200);
+        adjust();
+        SwingUtilities.invokeLater(() -> {
+          adjust();
+        });
+      }
+
+      @Override
+      public void componentShown(ComponentEvent e) {
+        adjust();
       }
     });
 

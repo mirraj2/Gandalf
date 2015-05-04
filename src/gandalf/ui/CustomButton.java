@@ -56,7 +56,6 @@ public class CustomButton extends GButton {
   public CustomButton size(int w, int h) {
     Dimension d = new Dimension(w, h);
     setPreferredSize(d);
-    setMaximumSize(d);
     setMinimumSize(d);
     return this;
   }

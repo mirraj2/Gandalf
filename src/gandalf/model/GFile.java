@@ -10,6 +10,8 @@ public class GFile {
 
   public String name;
   private String content;
+  public String instructions = "";
+  public boolean hidden = false;
 
   public final List<CategorizedProblem> errors = Lists.newArrayList(), warnings = Lists.newArrayList();
 
@@ -44,6 +46,9 @@ public class GFile {
       if (problem.isError()) {
         errors.add(problem);
       } else if (problem.isWarning()) {
+        if (problem.getMessage().contains("serialVersionUID")) {
+          continue;
+        }
         warnings.add(problem);
       } else {
         throw new IllegalStateException("Not error or warning: " + problem);

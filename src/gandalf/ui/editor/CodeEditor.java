@@ -50,13 +50,16 @@ public class CodeEditor extends GPanel {
   public void edit(GFile file) {
     this.file = file;
 
-    textPane.setText(file.getContent());
+    textPane.setVisible(file != null);
+    textPane.setText(file == null ? "" : file.getContent());
 
     SyntaxHighlighter.apply(doc);
   }
 
   public void onCompileFinished() {
-    SyntaxHighlighter.highlightProblems(file, textPane.getHighlighter());
+    if (file != null) {
+      SyntaxHighlighter.highlightProblems(file, textPane.getHighlighter());
+    }
   }
 
   @Override
@@ -92,6 +95,9 @@ public class CodeEditor extends GPanel {
         int code = e.getKeyCode();
         if (code == KeyEvent.VK_SPACE && (e.isControlDown() || e.isMetaDown())) {
           autocomplete.run(textPane);
+        } else if (code == KeyEvent.VK_F && e.isMetaDown() && e.isShiftDown()) {
+          String text = CodeFormatter.format(textPane.getText());
+          textPane.setText(text);
         }
       }
     });
